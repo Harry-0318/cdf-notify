@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands, tasks
 import aiohttp
+import requests
 import datetime
 import pytz
 from dotenv import load_dotenv
@@ -9,6 +10,8 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID")) 
+BOT_TOKEN= os.getenv("ACCESS_TOKEN")
+CHAT_ID = os.getenv("GROUP_ID")
 TIMEZONE = "Asia/Kolkata"  
 
 intents = discord.Intents.default()
@@ -59,26 +62,26 @@ async def send_daily_notification():
         )
 
     return "\n".join(lines)
-
+async def send_telegram_message(bot_token, chat_id, message):
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    requests.post(url, data=payload)
 
 # === Daily Task ===
 @tasks.loop(hours=1)
 async def daily_task():
     tz = pytz.timezone(TIMEZONE)
     now = datetime.datetime.now(tz)
-    # print("DEBUG: bot.guilds =", bot.guilds)
-    # print("DEBUG: CHANNEL_ID =", CHANNEL_ID)
     channel = bot.get_channel(CHANNEL_ID)
-    # print("DEBUG: channel =", channel)
-
-    channel = bot.get_channel(CHANNEL_ID)
-    # if channel: print("Channel Found")
-    # Run at exactly 10:00 AM
     if now.hour == 10:
-        
+        message = await send_daily_notification()
         if channel:
-            message = await send_daily_notification()
             await channel.send(message)
+        await send_telegram_message(BOT_TOKEN, CHAT_ID, message)
 
 
 @daily_task.before_loop
@@ -87,12 +90,6 @@ async def before_daily():
     print("Daily task is running...")
     for guild in bot.guilds:
         print("Connected guild:", guild.name)
-    # for channel in bot.get_all_channels():
-    #     print("FOUND CHANNEL:", channel.id, channel.name)
-
-
-
-
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
