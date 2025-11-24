@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 import aiohttp
 import requests
 import datetime
+from discord import app_commands
 import pytz
 from dotenv import load_dotenv
 import os
@@ -93,11 +94,34 @@ async def before_daily():
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+    try:
+        synced = await bot.tree.sync()   
+        print(f"Synced {len(synced)} slash commands")
+    except Exception as e:
+        print(e)
     daily_task.start()
 
 @bot.command()
 async def test(ctx):
     msg = await send_daily_notification()
     await ctx.send(msg)
+async def userinfo(username: str):
+    url = f"https://codeforces.com/api/user.info?handles={username}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            data = await resp.json()
+    if data["status"] != "OK":
+        return None
+    return data["result"][0]
+@bot.tree.command(name="user", description="get-the-info-of-a-user")
+@app_commands.describe(username="Codeforces username")
+async def user(interaction: discord.Interaction, username: str):
+    await interaction.response.send_message("Fetching user info...")
+    user_data = await userinfo(username)
+    if not user_data:
+        await interaction.edit_original_response(content="User not found.")
+        return
+    else:
+        await interaction.edit_original_response(content=f"User: {user_data['handle']}\nRating: {user_data.get('rating', 'Unrated')}\nMax Rating: {user_data.get('maxRating', 'Unrated')}\nRank: {user_data.get('rank', 'Unranked')}\nMax Rank: {user_data.get('maxRank', 'Unranked')}")
 
 bot.run(TOKEN)
