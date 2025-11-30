@@ -127,7 +127,7 @@ async def user(interaction: discord.Interaction, username: str):
         await interaction.edit_original_response(content="User not found.")
         return
     else:
-        await interaction.edit_original_response(content=f"User: {user_data['handle']} {","+user_data["organisation"] if user_data["organisation"] else "" },\nRating: {user_data.get('rating', 'Unrated')}\nMax Rating: {user_data.get('maxRating', 'Unrated')}\nRank: {user_data.get('rank', 'Unranked')}\nMax Rank: {user_data.get('maxRank', 'Unranked')}")
+        await interaction.edit_original_response(content=f"User: {user_data['handle']} ,\nRating: {user_data.get('rating', 'Unrated')}\nMax Rating: {user_data.get('maxRating', 'Unrated')}\nRank: {user_data.get('rank', 'Unranked')}\nMax Rank: {user_data.get('maxRank', 'Unranked')}")
 @bot.tree.command(name="problems", description="Find Some rated problems")
 @app_commands.describe(rating="Problem rating", number="Number of problems",username="Your Codeforces username")
 async def problems(interaction: discord.Interaction, rating: int, number: int, username: str):
