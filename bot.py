@@ -130,11 +130,11 @@ async def user(interaction: discord.Interaction, username: str):
         await interaction.edit_original_response(content=f"User: {user_data['handle']} ,\nRating: {user_data.get('rating', 'Unrated')}\nMax Rating: {user_data.get('maxRating', 'Unrated')}\nRank: {user_data.get('rank', 'Unranked')}\nMax Rank: {user_data.get('maxRank', 'Unranked')}")
 @bot.tree.command(name="problems", description="Find Some rated problems")
 @app_commands.describe(rating="Problem rating", number="Number of problems",username="Your Codeforces username")
-async def problems(interaction: discord.Interaction, rating: int, number: int, username: str):
+async def problems(interaction: discord.Interaction, rating: int, number: int, username: str,tags: str=None):
     await interaction.response.send_message("Fetching problems...")
     solved_file = "solved.csv"
     await get_user_problem_status(username)
-    problem_links = await get_problems(rating, number, solved_file,handle=username)
+    problem_links = await get_problems(rating, number, solved_file,handle=username,tags=tags)
     if not problem_links:
         await interaction.edit_original_response(content="No unsolved problems found with the specified rating.")
         return

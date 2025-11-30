@@ -3,6 +3,7 @@ import os
 import csv
 import requests
 import csv
+import random
 import os
 
 async def get_user_problem_status(handle: str):
@@ -16,7 +17,7 @@ async def get_user_problem_status(handle: str):
     problems_url = "https://codeforces.com/api/problemset.problems"
     problems_data = requests.get(problems_url).json()
     if problems_data["status"] != "OK":
-        raise Exception("Failed to fetch problemset")
+        return print("Failed to fetch problemset")
 
     problems = problems_data["result"]["problems"]
 
@@ -30,7 +31,7 @@ async def get_user_problem_status(handle: str):
     )
     sub_data = requests.get(submissions_url).json()
     if sub_data["status"] != "OK":
-        raise Exception("Failed to fetch user submissions")
+        return print("Failed to fetch user submissions")
 
     submissions = sub_data["result"]
 
@@ -52,7 +53,7 @@ async def get_user_problem_status(handle: str):
 
     # Open CSV file in append mode
     file_exists = os.path.isfile("solved.csv")
-    with open("solved.csv", "a", newline="", encoding="utf-8") as f:
+    with open("solved.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
 
         # Write header only if file does not yet exist
@@ -70,7 +71,7 @@ async def get_user_problem_status(handle: str):
 
             writer.writerow([handle, pid, status])
 
-async def get_problems(rating: int, n: int, solved_file: str = "solved.csv",handle: str="") -> list:
+async def get_problems(rating: int, n: int, solved_file: str = "solved.csv",handle: str="",tags=None) -> list:
     """
     Fetches n Codeforces problems with the given rating,
     skipping problems listed in solved.csv (format: 1234A).
@@ -84,15 +85,19 @@ async def get_problems(rating: int, n: int, solved_file: str = "solved.csv",hand
         List[str]: List of Codeforces problem URLs.
     """
 
+    if tags:
+        required_tags = [t.strip().lower() for t in tags.split(",") if t.strip()]
+    else:
+        required_tags = []
+
     # Load solved problem identifiers from solved.csv
     solved = set()
     if os.path.exists(solved_file):
         with open(solved_file, newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row['handle']==handle and row['status']=='solved':
+                if row['handle'] == handle and row['status'] == 'solved':
                     solved.add(row['problem'])
-                    
 
     # Fetch Codeforces problems
     url = "https://codeforces.com/api/problemset.problems"
@@ -100,27 +105,36 @@ async def get_problems(rating: int, n: int, solved_file: str = "solved.csv",hand
     data = response.json()
 
     if data["status"] != "OK":
-        raise Exception("Failed to fetch Codeforces problems.")
+        print("Failed to fetch Codeforces problems.")
+        return []
 
     problems = data["result"]["problems"]
 
-    # Filter by rating and remove solved ones
+    # Filter by rating, tags, and unsolved
     filtered = []
     for p in problems:
         if "rating" not in p:
             continue
+
         if p["rating"] != rating:
             continue
 
-        problem_id = f"{p['contestId']}{p['index']}"  # e.g. 1234A
+        # Tag filtering
+        problem_tags = [t.lower() for t in p.get("tags", [])]
+        if required_tags:
+            if not all(t in problem_tags for t in required_tags):
+                continue
 
+        # Solved filtering
+        problem_id = f"{p['contestId']}{p['index']}"
         if problem_id in solved:
-            continue  # skip solved problems
+            continue
 
         filtered.append(p)
 
-        if len(filtered) == n:
-            break
+    # Random selection
+    if len(filtered) > n:
+        filtered = random.sample(filtered, n)
 
     # Convert problems to URLs
     links = [
