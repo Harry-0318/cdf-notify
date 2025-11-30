@@ -7,6 +7,8 @@ from discord import app_commands
 import pytz
 from dotenv import load_dotenv
 import os
+import csv
+from utils import get_user_problem_status,get_problems
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -19,6 +21,9 @@ intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 CF_API_URL = "https://codeforces.com/api/contest.list"
+
+
+
 
 async def get_upcoming_contests():
     """Fetch contests occurring within the next 3 days."""
@@ -122,6 +127,17 @@ async def user(interaction: discord.Interaction, username: str):
         await interaction.edit_original_response(content="User not found.")
         return
     else:
-        await interaction.edit_original_response(content=f"User: {user_data['handle']}\nRating: {user_data.get('rating', 'Unrated')}\nMax Rating: {user_data.get('maxRating', 'Unrated')}\nRank: {user_data.get('rank', 'Unranked')}\nMax Rank: {user_data.get('maxRank', 'Unranked')}")
-
+        await interaction.edit_original_response(content=f"User: {user_data['handle']} {","+user_data["organisation"] if user_data["organisation"] else "" },\nRating: {user_data.get('rating', 'Unrated')}\nMax Rating: {user_data.get('maxRating', 'Unrated')}\nRank: {user_data.get('rank', 'Unranked')}\nMax Rank: {user_data.get('maxRank', 'Unranked')}")
+@bot.tree.command(name="problems", description="Find Some rated problems")
+@app_commands.describe(rating="Problem rating", number="Number of problems",username="Your Codeforces username")
+async def problems(interaction: discord.Interaction, rating: int, number: int, username: str):
+    await interaction.response.send_message("Fetching problems...")
+    solved_file = "solved.csv"
+    await get_user_problem_status(username)
+    problem_links = await get_problems(rating, number, solved_file,handle=username)
+    if not problem_links:
+        await interaction.edit_original_response(content="No unsolved problems found with the specified rating.")
+        return
+    response = "Here are some problems for you:\n" + "\n".join(problem_links)
+    await interaction.edit_original_response(content=response)
 bot.run(TOKEN)
